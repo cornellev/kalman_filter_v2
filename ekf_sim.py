@@ -16,10 +16,11 @@ P_k = [P_0]  # covariance array
 x_hat_prev = x_hat_0
 P_prev = P_0
 
-Q = np.eye(13) * 0.01
+Q = np.eye(state_dim) * 0.01
 R_imu = np.eye(imu_dim) * 0.15
 R_lidar = np.eye(lidar_dim) * 0.15
 R = sim.R_matrix()
+H = sim.H_matrix()
 
 L = 5  # wheelbase length in meters
 turn_radius = 40  # turn radius for simulating true path
@@ -59,8 +60,6 @@ for i in range(200):
 
     z_expected = sim.h_state(x_hat_curr_minus)
 
-    H = sim.H_matrix()
-
     residual = z_curr - z_expected
     residual[6] = (residual[6] + np.pi) % (2 * np.pi) - np.pi
 
@@ -79,4 +78,4 @@ x_t = np.array(x_t)
 z_k = np.array(z_k)
 x_hat_k = np.array(x_hat_k)
 
-sim.plot(x_t, z_k, x_hat_k)
+sim.plot(x_t, z_k, x_hat_k, "EKF")

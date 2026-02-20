@@ -118,7 +118,7 @@ def R_matrix():
         [np.zeros((imu_dim, lidar_dim)), R_imu]
     ])
 
-def plot(x_t, z_k, x_hat_k):
+def plot(x_t, z_k, x_hat_k, method):
     fig, axes = plt.subplots(4, 4, figsize=(18, 12))
     axes = axes.flatten()
 
@@ -127,7 +127,7 @@ def plot(x_t, z_k, x_hat_k):
     for i, label in enumerate(state_labels):
         ax = axes[i]
         ax.plot(x_t[:, i], label='True', linewidth=1.5)
-        ax.plot(x_hat_k[:, i], label='EKF', linewidth=1, linestyle='--')
+        ax.plot(x_hat_k[:, i], label=method, linewidth=1, linestyle='--')
         ax.set_title(label)
         ax.legend(fontsize=7)
         ax.grid(True)
@@ -141,7 +141,7 @@ def plot(x_t, z_k, x_hat_k):
     ax_xy = axes[13]
     ax_xy.plot(x_t[:, 0], x_t[:, 1], label='True Path')
     ax_xy.scatter(z_k[:, 0], z_k[:, 1], s=5, label='Sensor Measurements')
-    ax_xy.plot(x_hat_k[:, 0], x_hat_k[:, 1], label='EKF Prediction', linestyle='--')
+    ax_xy.plot(x_hat_k[:, 0], x_hat_k[:, 1], label=method + " Prediction", linestyle='--')
     ax_xy.set_title('xy path')
     ax_xy.axis('equal')
     ax_xy.legend(fontsize=7)
