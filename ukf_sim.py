@@ -22,8 +22,9 @@ alpha = 0.001
 beta = 2
 kappa = 0
 
-lambdaa = alpha ** 2 * (n + kappa) - n
+lambdaa = alpha**2 * (n + kappa) - n
 gamma = math.sqrt(n + lambdaa)
+
 
 def ackermann_model(input, dt, L):
     # x = [x, y, z, dx, dy, dz, d²x, d²y, d²z, yaw, d_yaw, delta, d_delta]
@@ -57,6 +58,7 @@ def ackermann_model(input, dt, L):
     output[1] = y + output[4] * dt
     output[2] = z + output[5] * dt
     return output
+
 
 x_truth = [x_hat_0]
 x_t_prev = x_hat_0
@@ -105,14 +107,14 @@ for i in range(200):
 
     for j in range(2 * n + 1):
         Y_i_t.append(ackermann_model(sigma_points[j], dt, L))
-    
+
     W_m = np.full(2 * n + 1, 1 / (2 * (n + lambdaa)))
     W_m[0] = lambdaa / (n + lambdaa)
     W_c = np.full(2 * n + 1, 1 / (2 * (n + lambdaa)))
-    W_c[0] = lambdaa / (n + lambdaa) + (1 - alpha ** 2 + beta)
+    W_c[0] = lambdaa / (n + lambdaa) + (1 - alpha**2 + beta)
 
     x_bar_t = np.zeros(n)
-    
+
     for j in range(2 * n + 1):
         x_bar_t += Y_i_t[j] * W_m[j]
 
@@ -120,7 +122,7 @@ for i in range(200):
 
     for j in range(2 * n + 1):
         P_bar_t += W_c[j] * np.outer(Y_i_t[j] - x_bar_t, Y_i_t[j] - x_bar_t)
-        
+
     P_bar_t += Q
 
     z_t = z_k[i]
@@ -131,10 +133,10 @@ for i in range(200):
     mu_z = np.zeros(m)
 
     for j in range(2 * n + 1):
-         mu_z += Z_i_t[j] * W_m[j]
+        mu_z += Z_i_t[j] * W_m[j]
 
     P_z = np.zeros((m, m))
-    
+
     for j in range(2 * n + 1):
         P_z += W_c[j] * np.outer(Z_i_t[j] - mu_z, Z_i_t[j] - mu_z)
 
@@ -158,7 +160,7 @@ for i in range(200):
     x_hat_k.append(x_t)
     P_k.append(P_t)
 
-x_truth= np.array(x_truth)
+x_truth = np.array(x_truth)
 z_k = np.array(z_k)
 x_hat_k = np.array(x_hat_k)
 

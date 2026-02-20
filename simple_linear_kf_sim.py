@@ -3,25 +3,25 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error as mse
 import math
 
-#state is position and velocity
-dt = 1 #update every second
-F = np.array([[1, dt], [0, 1]]) #state transition matrix based on physics equations
-#assume that there is no control matrix B
-Q = np.array([[0.1, 0], [0, 0.1]]) #process noise covariance
-H = np.identity(2) #measurement matrix to relate sensors and state
-R = np.array([[0.15, 0], [0, 0.15]]) #measurement noise covariance
-x_k = [[0, 1]] #true values
-z_k = [] #sensor measurements
+# state is position and velocity
+dt = 1  # update every second
+F = np.array([[1, dt], [0, 1]])  # state transition matrix based on physics equations
+# assume that there is no control matrix B
+Q = np.array([[0.1, 0], [0, 0.1]])  # process noise covariance
+H = np.identity(2)  # measurement matrix to relate sensors and state
+R = np.array([[0.15, 0], [0, 0.15]])  # measurement noise covariance
+x_k = [[0, 1]]  # true values
+z_k = []  # sensor measurements
 for i in range(1, 11):
-    x_k.append(F @ x_k[i-1] + np.random.multivariate_normal([0, 0], Q))
+    x_k.append(F @ x_k[i - 1] + np.random.multivariate_normal([0, 0], Q))
 for i in range(0, 11):
     z_k.append(H @ x_k[i] + np.random.multivariate_normal([0, 0], R))
 x_k = np.array(x_k)
 z_k = np.array(z_k)
-x_hat_0 = [0, 1] #initial state estimate
-P_0 = np.array([[0.1, 0], [0, 0.1]]) #initial covariance
-x_hat_k = [x_hat_0] #predictions array
-P_k = [P_0] #covariance array
+x_hat_0 = [0, 1]  # initial state estimate
+P_0 = np.array([[0.1, 0], [0, 0.1]])  # initial covariance
+x_hat_k = [x_hat_0]  # predictions array
+P_k = [P_0]  # covariance array
 x_hat_prev = x_hat_0
 P_prev = P_0
 
@@ -33,7 +33,9 @@ for i in range(1, 11):
     S = H @ P_minus @ H.T + R
     K = P_minus @ H.T @ np.linalg.inv(S)
     x_hat_new = x_hat_curr_minus + K @ residual
-    P_new = (np.identity(2) - K @ H) @ P_minus @ (np.identity(2) - K @ H).T + K @ R @ K.T
+    P_new = (np.identity(2) - K @ H) @ P_minus @ (
+        np.identity(2) - K @ H
+    ).T + K @ R @ K.T
 
     print("Predicted state at time step", i)
     print(x_hat_new)
