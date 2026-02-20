@@ -1,22 +1,33 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import track_sim_sensors as sim
 import math
 
 dt = 1
-
-# [x, y, z, dx, dy, dz, d²x, d²y, d²z, yaw, d_yaw, delta, d_delta]
-Q = np.eye(13) * 0.01
-R = np.eye(13) * 0.15
-P_0 = np.eye(13) * 0.1
-x_hat_0 = np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, np.pi / 2, 0, 0, 0])
-x_hat_k = [x_hat_0]  # predictions array
 n = 13
+imu_dim = 5
+lidar_dim = 3
+m = 8
+
+# x = [x, y, z, dx, dy, dz, d2x, d2y, d2z, yaw, d_yaw, delta, d_delta]
+# u = [v, delta]
+x_hat_0 = np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, np.pi / 2, 0, 0, 0])
+u_0 = [1, 0]
+P_0 = np.eye(n) * 0.1
+x_hat_k = [x_hat_0]  # predictions array
 P_k = [P_0]  # covariance array
 x_hat_prev = x_hat_0
 P_prev = P_0
 
+Q = np.eye(n) * 0.01
+R_imu = np.eye(imu_dim) * 0.15
+R_lidar = np.eye(lidar_dim) * 0.15
+R = sim.R_matrix()
+
 L = 5  # wheelbase length in meters
-turn_radius = 13  # turn radius for simulating true path
+turn_radius = 40  # turn radius for simulating true path
+
+x_truth = [x_hat_0]
+x_t_prev = x_hat_0
 
 alpha = 0.001
 beta = 2
@@ -25,75 +36,28 @@ kappa = 0
 lambdaa = alpha**2 * (n + kappa) - n
 gamma = math.sqrt(n + lambdaa)
 
-
-def ackermann_model(input, dt, L):
-    # x = [x, y, z, dx, dy, dz, d²x, d²y, d²z, yaw, d_yaw, delta, d_delta]
-    output = input.copy()
-    x = input[0]
-    y = input[1]
-    z = input[2]
-    dx = input[3]
-    dy = input[4]
-    dz = input[5]
-    d2x = input[6]
-    d2y = input[7]
-    d2z = input[8]
-    yaw = input[9]
-    d_yaw = input[10]
-    delta = input[11]
-    d_delta = input[12]
-    v = np.sqrt(dx**2 + dy**2)
-    omega = (v * np.tan(delta)) / L
-    output[12] = d_delta
-    output[11] = delta + output[12] * dt
-    output[10] = (v * np.tan(output[11])) / L
-    output[9] = yaw + output[10] * dt
-    output[6] = d2x
-    output[7] = d2y
-    output[8] = d2z
-    output[3] = v * np.cos(output[9])
-    output[4] = v * np.sin(output[9])
-    output[5] = dz + output[8] * dt
-    output[0] = x + output[3] * dt
-    output[1] = y + output[4] * dt
-    output[2] = z + output[5] * dt
-    return output
-
-
-x_truth = [x_hat_0]
-x_t_prev = x_hat_0
-
 for i in range(200):
-    if i < 60:
-        x_t_prev = ackermann_model(x_t_prev, 1, L)
-        x_truth.append(x_t_prev)
-    elif i < 100:
-        target_delta = np.arctan(L / turn_radius)
-        x_t_prev[11] = target_delta
-        x_t_prev = ackermann_model(x_t_prev, 1, L)
-        x_truth.append(x_t_prev)
-    elif i < 160:
-        x_t_prev[11] = 0
-        x_t_prev[4] = -1
-        x_t_prev[3] = 0
-        x_t_prev[9] = -np.pi / 2
-        x_t_prev = ackermann_model(x_t_prev, 1, L)
-        x_truth.append(x_t_prev)
-    else:
-        target_delta = np.arctan(L / turn_radius)
-        x_t_prev[11] = target_delta
-        x_t_prev = ackermann_model(x_t_prev, 1, L)
-        x_truth.append(x_t_prev)
+    u = sim.get_control(i, L, turn_radius)
+    x_t_prev = sim.ackermann_model(x_t_prev, u, dt, L)
+    x_truth.append(x_t_prev)
+
+# imu = [d2x, d2y, d2z, yaw, d_yaw]
+# lidar = [x, y, z]
+lidar_k = []
+imu_k = []
+
+for i in x_truth:
+    noise_imu = np.random.multivariate_normal(np.zeros(imu_dim), R_imu)
+    noise_lidar = np.random.multivariate_normal(np.zeros(lidar_dim), R_lidar)
+    lidar_k.append(i[0:3] + noise_lidar)
+    imu_k.append(i[6:11] + noise_imu)
 
 z_k = []
-m = 13
-
-for i in range(len(x_truth)):
-    noise = np.random.multivariate_normal(np.zeros_like(x_truth[i]), R)
-    z_k_curr = x_truth[i] + noise
-    z_k.append(z_k_curr)
+for i in range(len(lidar_k)):
+    z_k.append(sim.get_sensors(imu_k[i], lidar_k[i]))
 
 for i in range(200):
+    u = sim.get_control(i, L, turn_radius)
     sqrt_P = np.linalg.cholesky(P_prev)
 
     sigma_points = []
@@ -106,7 +70,7 @@ for i in range(200):
     Y_i_t = []
 
     for j in range(2 * n + 1):
-        Y_i_t.append(ackermann_model(sigma_points[j], dt, L))
+        Y_i_t.append(sim.ackermann_model(sigma_points[j], u, dt, L))
 
     W_m = np.full(2 * n + 1, 1 / (2 * (n + lambdaa)))
     W_m[0] = lambdaa / (n + lambdaa)
@@ -127,8 +91,7 @@ for i in range(200):
 
     z_t = z_k[i]
 
-    # NEED TO CHANGE IN REAL IMPLEMENTATION to Z_i_t = h(Y_i_t)
-    Z_i_t = Y_i_t
+    Z_i_t = [sim.h_state(y) for y in Y_i_t]
 
     mu_z = np.zeros(m)
 
@@ -164,9 +127,4 @@ x_truth = np.array(x_truth)
 z_k = np.array(z_k)
 x_hat_k = np.array(x_hat_k)
 
-plt.plot(x_truth[:, 0], x_truth[:, 1], label="True Path")
-plt.scatter(z_k[:, 0], z_k[:, 1], s=5, label="Sensor Measurements")
-plt.plot(x_hat_k[:, 0], x_hat_k[:, 1], label="UKF Prediction")
-plt.axis("equal")
-plt.legend()
-plt.show()
+sim.plot(x_truth, z_k, x_hat_k, "UKF")
