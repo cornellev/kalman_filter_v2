@@ -118,6 +118,22 @@ def R_matrix():
         [np.zeros((imu_dim, gps_dim)), R_imu]
     ])
 
+def likelihood(particle_state, z_k, R):
+    z_pred = np.array([
+        particle_state[0],
+        particle_state[1],
+        particle_state[2],
+        particle_state[6],
+        particle_state[7],
+        particle_state[8],
+        particle_state[9],
+        particle_state[10]
+    ])
+    residual = z_k - z_pred
+    R_inv = np.linalg.inv(R)
+    likelihood = np.exp(-0.5 * residual @ R_inv @ residual)
+    return likelihood
+
 def plot(x_t, z_k, x_hat_k, method):
     fig, axes = plt.subplots(4, 4, figsize=(18, 12))
     axes = axes.flatten()
