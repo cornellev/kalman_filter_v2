@@ -5,7 +5,7 @@ import math
 dt = 1
 n = 13
 imu_dim = 5
-lidar_dim = 3
+gps_dim = 3
 m = 8
 
 # x = [x, y, z, dx, dy, dz, d2x, d2y, d2z, yaw, d_yaw, delta, d_delta]
@@ -20,7 +20,7 @@ P_prev = P_0
 
 Q = np.eye(n) * 0.01
 R_imu = np.eye(imu_dim) * 0.15
-R_lidar = np.eye(lidar_dim) * 0.15
+R_gps = np.eye(gps_dim) * 0.15
 R = sim.R_matrix()
 
 L = 5  # wheelbase length in meters
@@ -42,19 +42,19 @@ for i in range(200):
     x_truth.append(x_t_prev)
 
 # imu = [d2x, d2y, d2z, yaw, d_yaw]
-# lidar = [x, y, z]
-lidar_k = []
+# gps = [x, y, z]
+gps_k = []
 imu_k = []
 
 for i in x_truth:
     noise_imu = np.random.multivariate_normal(np.zeros(imu_dim), R_imu)
-    noise_lidar = np.random.multivariate_normal(np.zeros(lidar_dim), R_lidar)
-    lidar_k.append(i[0:3] + noise_lidar)
+    noise_gps = np.random.multivariate_normal(np.zeros(gps_dim), R_gps)
+    gps_k.append(i[0:3] + noise_gps)
     imu_k.append(i[6:11] + noise_imu)
 
 z_k = []
-for i in range(len(lidar_k)):
-    z_k.append(sim.get_sensors(imu_k[i], lidar_k[i]))
+for i in range(len(gps_k)):
+    z_k.append(sim.get_sensors(imu_k[i], gps_k[i]))
 
 for i in range(200):
     u = sim.get_control(i, L, turn_radius)

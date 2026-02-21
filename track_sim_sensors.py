@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 dt = 1
 state_dim = 13
 imu_dim = 5
-lidar_dim = 3
+gps_dim = 3
 
 # x = [x, y, z, dx, dy, dz, d2x, d2y, d2z, yaw, d_yaw, delta, d_delta]
 # u = [v, delta]
@@ -12,7 +12,7 @@ x_hat_0 = np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, np.pi / 2, 0, 0, 0])
 u_0 = [1, 0]
 
 R_imu = np.eye(imu_dim) * 0.15
-R_lidar = np.eye(lidar_dim) * 0.15
+R_gps = np.eye(gps_dim) * 0.15
 
 L = 5  # wheelbase length in meters
 turn_radius = 40  # turn radius for simulating true path
@@ -85,8 +85,8 @@ def get_control(i, L, turn_radius):
     return np.array([v, delta])
 
 
-def get_sensors(imu, lidar):
-    return np.concatenate((lidar, imu))
+def get_sensors(imu, gps):
+    return np.concatenate((gps, imu))
 
 def h_state(state):
     return np.array([
@@ -114,8 +114,8 @@ def H_matrix():
 
 def R_matrix():
     return np.block([
-        [R_lidar, np.zeros((lidar_dim, imu_dim))],
-        [np.zeros((imu_dim, lidar_dim)), R_imu]
+        [R_gps, np.zeros((gps_dim, imu_dim))],
+        [np.zeros((imu_dim, gps_dim)), R_imu]
     ])
 
 def plot(x_t, z_k, x_hat_k, method):
