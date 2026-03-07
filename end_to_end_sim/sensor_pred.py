@@ -13,6 +13,7 @@ try:
     state_dim = 7
     sensor_dim = 6
     state = [0, 0, 0, 0, 0, 0, 0]
+    P = np.eye(state_dim) * 0.1
     Q = np.eye(state_dim) * 0.01
     R = np.eye(sensor_dim) * 0.15
     while True:
