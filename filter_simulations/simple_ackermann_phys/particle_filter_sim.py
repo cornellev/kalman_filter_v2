@@ -1,0 +1,79 @@
+import numpy as np
+import track_sim_sensors as sim
+
+dt = 1
+state_dim = 13
+imu_dim = 5
+gps_dim = 3
+
+# x = [x, y, z, dx, dy, dz, d2x, d2y, d2z, yaw, d_yaw, delta, d_delta]
+# u = [v, delta]
+x_hat_0 = np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, np.pi / 2, 0, 0, 0])
+u_0 = [1, 0]
+P_0 = np.eye(state_dim) * 0.1
+x_hat_k = [x_hat_0]  # predictions array
+P_k = [P_0]  # covariance array
+x_hat_prev = x_hat_0
+P_prev = P_0
+
+Q = np.eye(state_dim) * 0.01
+R_imu = np.eye(imu_dim) * 0.15
+R_gps = np.eye(gps_dim) * 0.15
+R = sim.R_matrix()
+H = sim.H_matrix()
+
+L = 5  # wheelbase length in meters
+turn_radius = 40  # turn radius for simulating true path
+
+x_t = [x_hat_0]
+x_t_prev = x_hat_0
+
+for i in range(200):
+    u = sim.get_control(i, L, turn_radius)
+    x_t_prev = sim.ackermann_model(x_t_prev, u, dt, L)
+    x_t.append(x_t_prev)
+
+# imu = [d2x, d2y, d2z, yaw, d_yaw]
+# gps = [x, y, z]
+gps_k = []
+imu_k = []
+
+for i in x_t:
+    noise_imu = np.random.multivariate_normal(np.zeros(imu_dim), R_imu)
+    noise_gps = np.random.multivariate_normal(np.zeros(gps_dim), R_gps)
+    gps_k.append(i[0:3] + noise_gps)
+    imu_k.append(i[6:11] + noise_imu)
+
+z_k = []
+for i in range(len(gps_k)):
+    z_k.append(sim.get_sensors(imu_k[i], gps_k[i]))
+
+particles = []
+n_particles = 100
+for i in range(n_particles):
+    noise = np.random.multivariate_normal(np.zeros(state_dim), P_0)
+    particles.append(x_hat_0 + noise)
+particles = np.array(particles)
+
+for i in range(200):
+    u = sim.get_control(i, L, turn_radius)
+    for j in range(n_particles):
+        noise = np.random.multivariate_normal(np.zeros(state_dim), Q)
+        particles[j] = sim.ackermann_model(particles[j], u, dt, L) + noise
+    weights = []
+    for j in range(n_particles):
+        weights.append(sim.likelihood(particles[j], z_k[i], R))
+    weights = np.array(weights)
+    weights /= np.sum(weights)
+    x_hat_k.append(np.sum(particles * weights[:, None], axis=0))
+    N_eff = 1 / np.sum(weights**2)
+    if N_eff < n_particles / 2:
+        inds = np.random.choice(range(n_particles), size=n_particles, p=weights)
+        particles = particles[inds]
+        weights = np.ones(n_particles) / n_particles
+
+x_t = np.array(x_t)
+z_k = np.array(z_k)
+x_hat_k = np.array(x_hat_k)
+
+sim.plot(x_t, z_k, x_hat_k, "Particle Filter")
